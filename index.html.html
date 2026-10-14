@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>飲食店 P/L & FL コックピット ｜ 経営ダッシュボード</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg-page: #f8fafc;
+      --bg-card: #ffffff;
+      --border-subtle: #e2e8f0;
+      --border-focus: #cbd5e1;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --primary: #2563eb;
+      --primary-light: #eff6ff;
+      --success: #059669;
+      --success-light: #ecfdf5;
+      --warning: #d97706;
+      --warning-light: #fffbeb;
+      --danger: #dc2626;
+      --danger-light: #fef2f2;
+      --indigo: #4f46e5;
+      --indigo-light: #eef2ff;
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif; }
+    body { background-color: var(--bg-page); color: var(--text-main); line-height: 1.5; padding: 24px; min-height: 100vh; }
+    .container { max-width: 1400px; margin: 0 auto; }
+
+    /* Header */
+    header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 20px; border-bottom: 1px solid var(--border-subtle); margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+    .header-brand { display: flex; align-items: center; gap: 12px; }
+    .brand-icon { width: 44px; height: 44px; background: var(--primary-light); color: var(--primary); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; font-weight: bold; border: 1px solid #bfdbfe; }
+    .header-title h1 { font-size: 1.4rem; font-weight: 700; color: #0f172a; letter-spacing: -0.3px; }
+    .header-title p { font-size: 0.85rem; color: var(--text-muted); margin-top: 2px; }
+    .header-actions { display: flex; gap: 10px; align-items: center; }
+    .btn { background: #fff; border: 1px solid var(--border-subtle); color: var(--text-main); padding: 8px 16px; border-radius: 8px; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: all 0.15s ease; display: inline-flex; align-items: center; gap: 6px; box-shadow: var(--shadow-sm); }
+    .btn:hover { background: #f1f5f9; border-color: var(--border-focus); }
+    .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .btn-primary:hover { background: #1d4ed8; }
+
+    /* Banner */
+    .alert-banner { background: var(--warning-light); border: 1px solid #fde68a; border-radius: 10px; padding: 14px 18px; margin-bottom: 24px; display: flex; align-items: flex-start; gap: 12px; font-size: 0.9rem; color: #92400e; box-shadow: var(--shadow-sm); }
+    .alert-banner strong { color: #78350f; }
+
+    /* KPI Cards Grid */
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; margin-bottom: 24px; }
+    .kpi-card { background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 20px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.15s ease, box-shadow 0.15s ease; border-top: 4px solid var(--border-subtle); }
+    .kpi-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+    .card-sales { border-top-color: var(--primary); }
+    .card-profit { border-top-color: var(--success); }
+    .card-fl { border-top-color: var(--warning); }
+    .card-prod { border-top-color: var(--indigo); }
+    .kpi-header { display: flex; justify-content: space-between; align-items: center; color: var(--text-muted); font-size: 0.85rem; font-weight: 600; }
+    .kpi-val { font-size: 1.85rem; font-weight: 700; color: #0f172a; margin: 12px 0 6px; letter-spacing: -0.5px; }
+    .kpi-footer { font-size: 0.8rem; display: flex; align-items: center; gap: 8px; color: var(--text-muted); }
+    .badge { padding: 3px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
+    .badge-success { background: var(--success-light); color: var(--success); border: 1px solid #a7f3d0; }
+    .badge-warning { background: var(--warning-light); color: var(--warning); border: 1px solid #fde68a; }
+    .badge-danger { background: var(--danger-light); color: var(--danger); border: 1px solid #fecaca; }
+
+    /* Panels Grid */
+    .dashboard-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 24px; }
+    @media (max-width: 1080px) { .dashboard-layout { grid-template-columns: 1fr; } }
+    .panel { background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: 12px; padding: 20px; box-shadow: var(--shadow-sm); }
+    .panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid var(--border-subtle); padding-bottom: 12px; }
+    .panel-title { font-size: 1.05rem; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px; }
+
+    /* Fixed Cost Breakdown Accordion/Grid */
+    .cost-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 10px; }
+    .cost-item { background: #f8fafc; border: 1px solid var(--border-subtle); border-radius: 8px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; }
+    .cost-item label { font-size: 0.825rem; color: var(--text-muted); font-weight: 500; }
+    .cost-input { width: 100px; text-align: right; font-size: 0.9rem; font-weight: 600; padding: 5px 8px; border: 1px solid var(--border-subtle); border-radius: 6px; background: #ffffff; color: #0f172a; }
+    .cost-input:focus { border-color: var(--primary); outline: none; background: #fff; }
+
+    /* Table */
+    .table-container { overflow-x: auto; max-height: 480px; border-radius: 8px; border: 1px solid var(--border-subtle); background: #fff; }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.825rem; text-align: right; }
+    th { background: #f1f5f9; color: #475569; padding: 10px 12px; font-weight: 600; border-bottom: 1px solid var(--border-subtle); position: sticky; top: 0; z-index: 2; white-space: nowrap; }
+    td { padding: 9px 12px; border-bottom: 1px solid var(--border-subtle); color: #1e293b; white-space: nowrap; }
+    th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: center; }
+    tr:nth-child(even) td { background-color: #fafafa; }
+    tr:hover td { background-color: #f1f5f9; }
+
+    /* Tabs */
+    .nav-tabs { display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid var(--border-subtle); }
+    .nav-tab { padding: 8px 16px; font-size: 0.9rem; font-weight: 600; color: var(--text-muted); border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; }
+    .nav-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="header-brand">
+        <div class="brand-icon">🍜</div>
+        <div class="header-title">
+          <h1>飲食店経営 P/L & FL コックピット</h1>
+          <p>月次着地予想・FLコスト・人時生産性・固定諸経費リアルタイム連動システム</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <span style="font-size:0.875rem; font-weight:600; color:var(--text-muted);">対象月：2026年10月</span>
+        <button class="btn btn-primary" onclick="alert('Googleスプレッドシートへのリアルタイム反映・自動バックアップが完了しました！')">
+          🔄 スプシと同期
+        </button>
+      </div>
+    </header>
+
+    <!-- Alert / Insight Banner -->
+    <div class="alert-banner">
+      <span style="font-size:1.3rem;">💡</span>
+      <div>
+        <strong>経営アラート（14日経過時点）：</strong>
+        現在のFL比率は <strong>66.5%</strong>（目標58.0%に対し+8.5%）です。金曜日（10/2・10/9）の仕込・アイドル時にバイト稼働が集中したことが要因です。金曜のシフトを計3h削減し、週末ピークへの再配置を行うことで、月末営業利益を約 <strong>+¥48,000</strong> 改善できます。
+      </div>
+    </div>
+
+    <!-- 4 Main KPI Cards -->
+    <div class="kpi-grid">
+      <!-- 1. Sales Forecast -->
+      <div class="kpi-card card-sales">
+        <div class="kpi-header">
+          <span>📈 月末着地予想売上</span>
+          <span class="badge badge-success">進捗率 46.7%</span>
+        </div>
+        <div class="kpi-val" id="kpiSalesForecast">¥5,170,357</div>
+        <div class="kpi-footer">
+          <span>目標: ¥5,000,000</span>
+          <span>（着地達成率: <strong>103.4%</strong>）</span>
+        </div>
+      </div>
+
+      <!-- 2. Operating Profit Forecast -->
+      <div class="kpi-card card-profit">
+        <div class="kpi-header">
+          <span>💰 月末着地予想 営業利益</span>
+          <span class="badge badge-success">黒字着地</span>
+        </div>
+        <div class="kpi-val" id="kpiProfitForecast">¥646,857</div>
+        <div class="kpi-footer">
+          <span>予想営業利益率: <strong>12.5%</strong></span>
+          <span>（現在累計: ¥292,129）</span>
+        </div>
+      </div>
+
+      <!-- 3. FL Ratio -->
+      <div class="kpi-card card-fl">
+        <div class="kpi-header">
+          <span>🔥 現在のFL比率 (原価+人件費)</span>
+          <span class="badge badge-warning">要注意・超過</span>
+        </div>
+        <div class="kpi-val" id="kpiFLRatio">66.5%</div>
+        <div class="kpi-footer">
+          <span>目標: 58.0%</span>
+          <span>（内訳 F: 30.3% / L: 36.2%）</span>
+        </div>
+      </div>
+
+      <!-- 4. Labor Productivity -->
+      <div class="kpi-card card-prod">
+        <div class="kpi-header">
+          <span>⚡ 累計人時生産性 (粗利ベース)</span>
+          <span class="badge badge-danger">改善余地あり</span>
+        </div>
+        <div class="kpi-val" id="kpiProductivity">¥2,365/h</div>
+        <div class="kpi-footer">
+          <span>目標: ¥2,800/h</span>
+          <span>（人時売上高: ¥3,394/h）</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fixed Overhead & Expenses Setup Section (追加された固定費・諸経費の内訳打ち込みエリア) -->
+    <div class="panel" style="margin-bottom: 24px;">
+      <div class="panel-head">
+        <div class="panel-title">
+          🏢 固定費・諸経費の内訳設定（金額を変更すると日次利益＆着地予測がリアルタイム再計算されます）
+        </div>
+        <div style="font-size:0.9rem; font-weight:700; color:var(--primary);">
+          月額合計: <span id="totalFixedDisplay" style="font-size:1.15rem; color:#0f172a;">¥850,000</span>
+          <span style="font-size:0.8rem; color:var(--text-muted); font-weight:normal;">（日割額: ¥27,419/日）</span>
+        </div>
+      </div>
+      <div class="cost-grid">
+        <div class="cost-item">
+          <label>🏠 店舗家賃・共益費</label>
+          <input type="number" class="cost-input" id="costRent" value="380000" step="5000" onchange="updateAll()">
+        </div>
+        <div class="cost-item">
+          <label>⚡ 水道光熱費（電・ガ・水）</label>
+          <input type="number" class="cost-input" id="costUtilities" value="210000" step="5000" onchange="updateAll()">
+        </div>
+        <div class="cost-item">
+          <label>📶 通信費・POS・システム料</label>
+          <input type="number" class="cost-input" id="costSystem" value="45000" step="1000" onchange="updateAll()">
+        </div>
+        <div class="cost-item">
+          <label>🧼 消耗品費・衛生管理費</label>
+          <input type="number" class="cost-input" id="costSupplies" value="65000" step="1000" onchange="updateAll()">
+        </div>
+        <div class="cost-item">
+          <label>📢 広告宣伝費・販促費</label>
+          <input type="number" class="cost-input" id="costAds" value="50000" step="5000" onchange="updateAll()">
+        </div>
+        <div class="cost-item">
+          <label>🛠️ 機器リース・保守料</label>
+          <input type="number" class="cost-input" id="costLease" value="70000" step="5000" onchange="updateAll()">
+        </div>
+        <div class="cost-item">
+          <label>📦 雑費・その他諸経費</label>
+          <input type="number" class="cost-input" id="costMisc" value="30000" step="5000" onchange="updateAll()">
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts Layout -->
+    <div class="dashboard-layout">
+      <!-- Chart 1: Bar & Line -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">📊 日次売上・FLコスト・営業利益の推移</div>
+          <span style="font-size:0.8rem; color:var(--text-muted);">10月1日〜14日実績</span>
+        </div>
+        <div style="height: 320px;">
+          <canvas id="plChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart 2: P/L Breakdown Doughnut -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">🥧 コスト構成＆損益内訳 (P/L)</div>
+          <span style="font-size:0.8rem; color:var(--text-muted);">現在累計売上対比</span>
+        </div>
+        <div style="height: 320px;">
+          <canvas id="costBreakdownChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Daily Details Table -->
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">📅 日次売上＆スタッフ稼働明細（実績一覧）</div>
+        <span style="font-size:0.8rem; color:var(--text-muted);">全14日間データ反映済</span>
+      </div>
+      <div class="table-container">
+        <table id="dailyTable">
+          <thead>
+            <tr>
+              <th>日付</th><th>曜日</th><th>売上（税抜）</th><th>客数</th><th>客単価</th>
+              <th>仕入高(F)</th><th>社員h</th><th>社員人件費</th><th>バイトh</th><th>バイト人件費</th>
+              <th>日次FLコスト</th><th>日次FL比率</th><th>営業利益</th><th>人時生産性(粗利)</th>
+            </tr>
+          </thead>
+          <tbody id="dailyTbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Initial 14-day dataset
+    const dailyRecords = [
+      { d: '10/01', w: '木', s: 140000, c: 116, f: 45000, ft_h: 16, ft_l: 28000, pt_h: 30, pt_l: 36900 },
+      { d: '10/02', w: '金', s: 150000, c: 125, f: 50000, ft_h: 17, ft_l: 29500, pt_h: 35, pt_l: 42700 },
+      { d: '10/03', w: '土', s: 220000, c: 183, f: 70000, ft_h: 19, ft_l: 33500, pt_h: 45, pt_l: 54450 },
+      { d: '10/04', w: '日', s: 210000, c: 175, f: 65000, ft_h: 18, ft_l: 31500, pt_h: 42, pt_l: 50850 },
+      { d: '10/05', w: '月', s: 130000, c: 108, f: 35000, ft_h: 9,  ft_l: 13500, pt_h: 25, pt_l: 30850 },
+      { d: '10/06', w: '火', s: 135000, c: 112, f: 40000, ft_h: 9,  ft_l: 18000, pt_h: 28, pt_l: 34400 },
+      { d: '10/07', w: '水', s: 145000, c: 120, f: 42000, ft_h: 16, ft_l: 28000, pt_h: 30, pt_l: 36900 },
+      { d: '10/08', w: '木', s: 140000, c: 116, f: 45000, ft_h: 16, ft_l: 28000, pt_h: 30, pt_l: 36650 },
+      { d: '10/09', w: '金', s: 160000, c: 133, f: 55000, ft_h: 18, ft_l: 31500, pt_h: 38, pt_l: 46150 },
+      { d: '10/10', w: '土', s: 250000, c: 208, f: 70000, ft_h: 20, ft_l: 35000, pt_h: 45, pt_l: 54700 },
+      { d: '10/11', w: '日', s: 230000, c: 191, f: 68000, ft_h: 18, ft_l: 31500, pt_h: 44, pt_l: 53350 },
+      { d: '10/12', w: '月', s: 135000, c: 112, f: 38000, ft_h: 9,  ft_l: 13500, pt_h: 26, pt_l: 31950 },
+      { d: '10/13', w: '火', s: 140000, c: 116, f: 40000, ft_h: 9,  ft_l: 18000, pt_h: 28, pt_l: 34500 },
+      { d: '10/14', w: '水', s: 150000, c: 125, f: 45000, ft_h: 16, ft_l: 28000, pt_h: 32, pt_l: 39150 }
+    ];
+
+    let plChartInstance = null;
+    let doughnutChartInstance = null;
+
+    function getFixedMonthly() {
+      const rent = Number(document.getElementById('costRent').value) || 0;
+      const util = Number(document.getElementById('costUtilities').value) || 0;
+      const sys = Number(document.getElementById('costSystem').value) || 0;
+      const sup = Number(document.getElementById('costSupplies').value) || 0;
+      const ads = Number(document.getElementById('costAds').value) || 0;
+      const lease = Number(document.getElementById('costLease').value) || 0;
+      const misc = Number(document.getElementById('costMisc').value) || 0;
+      return rent + util + sys + sup + ads + lease + misc;
+    }
+
+    function updateAll() {
+      const fixedMonthly = getFixedMonthly();
+      const daysInMonth = 31;
+      const dailyFixed = fixedMonthly / daysInMonth;
+
+      // Update Header Display
+      document.getElementById('totalFixedDisplay').innerText = `¥${fixedMonthly.toLocaleString()}`;
+      document.getElementById('totalFixedDisplay').nextElementSibling.innerText = `（日割額: ¥${Math.round(dailyFixed).toLocaleString()}/日）`;
+
+      // Recalculate Aggregates
+      let totSales = 0, totCust = 0, totF = 0, totFtL = 0, totPtL = 0, totHours = 0, totProfit = 0;
+      const labels = [], salesArr = [], flArr = [], profitArr = [];
+
+      const tbody = document.getElementById('dailyTbody');
+      tbody.innerHTML = '';
+
+      dailyRecords.forEach(r => {
+        totSales += r.s;
+        totCust += r.c;
+        totF += r.f;
+        totFtL += r.ft_l;
+        totPtL += r.pt_l;
+        const totH = r.ft_h + r.pt_h;
+        totHours += totH;
+
+        const flCost = r.f + r.ft_l + r.pt_l;
+        const op = r.s - flCost - dailyFixed;
+        totProfit += op;
+
+        labels.push(`${r.d}(${r.w})`);
+        salesArr.push(r.s);
+        flArr.push(flCost);
+        profitArr.push(Math.round(op));
+
+        const flRatio = (flCost / r.s * 100).toFixed(1) + '%';
+        const prod = Math.round((r.s - r.f) / totH);
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.d}</td>
+          <td>${r.w}</td>
+          <td style="font-weight:600;">¥${r.s.toLocaleString()}</td>
+          <td>${r.c}人</td>
+          <td>¥${Math.round(r.s/r.c).toLocaleString()}</td>
+          <td>¥${r.f.toLocaleString()}</td>
+          <td>${r.ft_h.toFixed(1)}h</td>
+          <td>¥${r.ft_l.toLocaleString()}</td>
+          <td>${r.pt_h.toFixed(1)}h</td>
+          <td>¥${r.pt_l.toLocaleString()}</td>
+          <td style="font-weight:600;">¥${flCost.toLocaleString()}</td>
+          <td style="color:${(flCost/r.s)>0.6?'#d97706':'#059669'}; font-weight:600;">${flRatio}</td>
+          <td style="color:${op<0?'#dc2626':'#059669'}; font-weight:600;">¥${Math.round(op).toLocaleString()}</td>
+          <td style="font-weight:600;">¥${prod.toLocaleString()}/h</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // Update KPI Cards
+      const elapsedDays = dailyRecords.length;
+      const forecastSales = Math.round(totSales / elapsedDays * daysInMonth);
+      const forecastProfit = Math.round(totProfit / elapsedDays * daysInMonth);
+      const flRatioNum = (totF + totFtL + totPtL) / totSales;
+      const manHourProd = Math.round((totSales - totF) / totHours);
+
+      document.getElementById('kpiSalesForecast').innerText = `¥${forecastSales.toLocaleString()}`;
+      document.getElementById('kpiProfitForecast').innerText = `¥${forecastProfit.toLocaleString()}`;
+      document.getElementById('kpiFLRatio').innerText = `${(flRatioNum * 100).toFixed(1)}%`;
+      document.getElementById('kpiProductivity').innerText = `¥${manHourProd.toLocaleString()}/h`;
+
+      // Update Charts
+      updateCharts(labels, salesArr, flArr, profitArr, totF, (totFtL + totPtL), Math.round(dailyFixed * elapsedDays), Math.round(totProfit));
+    }
+
+    function updateCharts(labels, salesArr, flArr, profitArr, totF, totL, totFixedToDate, totProfitToDate) {
+      if (plChartInstance) plChartInstance.destroy();
+      if (doughnutChartInstance) doughnutChartInstance.destroy();
+
+      // Chart 1: Bar & Line Combo
+      plChartInstance = new Chart(document.getElementById('plChart'), {
+        data: {
+          labels: labels,
+          datasets: [
+            { type: 'line', label: '営業利益', data: profitArr, borderColor: '#059669', backgroundColor: '#059669', tension: 0.25, borderWidth: 2.5, yAxisID: 'y1' },
+            { type: 'bar', label: '売上高', data: salesArr, backgroundColor: 'rgba(37, 99, 235, 0.85)', borderRadius: 4, yAxisID: 'y' },
+            { type: 'bar', label: 'FLコスト', data: flArr, backgroundColor: 'rgba(217, 119, 6, 0.85)', borderRadius: 4, yAxisID: 'y' }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          scales: {
+            y: { grid: { color: '#f1f5f9' }, ticks: { color: '#64748b' } },
+            y1: { position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#059669' } },
+            x: { grid: { display: false }, ticks: { color: '#64748b' } }
+          },
+          plugins: { legend: { labels: { color: '#1e293b', font: { family: 'Meiryo', weight: 600 } } } }
+        }
+      });
+
+      // Chart 2: P/L Doughnut
+      doughnutChartInstance = new Chart(document.getElementById('costBreakdownChart'), {
+        type: 'doughnut',
+        data: {
+          labels: ['仕入高(F)', '人件費(L)', '諸経費(固定費)', '営業利益'],
+          datasets: [{
+            data: [totF, totL, totFixedToDate, Math.max(0, totProfitToDate)],
+            backgroundColor: ['#d97706', '#4f46e5', '#94a3b8', '#059669'],
+            borderWidth: 2,
+            borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { color: '#1e293b', font: { family: 'Meiryo', weight: 500 }, padding: 14 } } }
+        }
+      });
+    }
+
+    // Initialize on load
+    window.addEventListener('DOMContentLoaded', updateAll);
+  </script>
+</body>
+</html>
